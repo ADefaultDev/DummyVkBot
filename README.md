@@ -24,11 +24,12 @@ OkHttp (HTTP-requests to DeepSeek)
 Gradle (build system)
 
 🚀 Setup
-1. Clone repo
+
+Clone repo:
 bash
 git clone https://github.com/ADefaultDev/DummyVkBot
 cd deepseek-social-integration
-2. Установить зависимости
+
 Make sure to have following dependencies:
 JDK 17+
 Gradle
