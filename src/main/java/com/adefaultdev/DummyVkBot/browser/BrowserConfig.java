@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.util.Properties;
 
 public class BrowserConfig {
+
     private static final String PROPERTIES_FILE = "config.properties";
     private static final String browserPath;
     private static final String driverVersion;
@@ -26,4 +27,5 @@ public class BrowserConfig {
     public static String getDriverVersion() {
         return driverVersion;
     }
+
 }
