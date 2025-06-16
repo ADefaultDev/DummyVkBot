@@ -40,23 +40,34 @@ public class BrowserListener {
     }
 
     private void waitForUserLogin() {
+        try {
 
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("div.chat-list")));
-
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.id("spa_root")));
+        } catch (TimeoutException e){
+            System.err.println("30 sec timeout");
+            driver.quit(); //add additional conditions and alternative handling
+        }
     }
 
     private void checkForNewMessages() {
+        try {
 
-        List<WebElement> messages = driver.findElements(By.cssSelector(".im-mess--text")); //The css selector is dependent on messenger
+            wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("span.MessageText")));
 
-        for (WebElement message : messages) {
-            try {
-                String text = message.getText();
-                if (!seenMessages.contains(text)) {
+            List<WebElement> messages = driver.findElements(By.cssSelector("span.MessageText"));
+
+            if (!messages.isEmpty()) {
+
+                WebElement lastMessage = messages.get(messages.size() - 1); // getting only the last message
+                String text = lastMessage.getText();
+
+                if (!text.isEmpty() && !seenMessages.contains(text)) {
                     seenMessages.add(text);
-                    System.out.println("Новое сообщение: " + text); //Until there is no logic for DeepSeekClient, just print messages
+                    System.out.println("Last message: " + text);
                 }
-            } catch (StaleElementReferenceException ignored) {}
+            }
+        } catch (NoSuchElementException e) {
+            System.err.println("No messages: " + e.getMessage());
         }
 
     }
@@ -67,4 +78,5 @@ public class BrowserListener {
             driver.quit();
         }
     }
+
 }
