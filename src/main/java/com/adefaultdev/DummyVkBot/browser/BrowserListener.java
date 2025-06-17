@@ -11,17 +11,21 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import io.github.bonigarcia.wdm.WebDriverManager;
 
 import java.time.Duration;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("BusyWait")
 public class BrowserListener {
+
     private WebDriver driver;
     private WebDriverWait wait;
-    private final Set<String> seenMessages = new HashSet<>();
+    private final Map<String, Long> seenMessages = new ConcurrentHashMap<>();
     private volatile boolean shouldContinue = true;
+    private static final long TTL_MILLIS = 10 * 60 * 1000;
 
     public void start(String messengerUrl) {
+
         WebDriverManager.chromedriver().setup();
         driver = new ChromeDriver();
         wait = new WebDriverWait(driver, Duration.ofSeconds(30));
@@ -36,9 +40,10 @@ public class BrowserListener {
         }
 
         while (shouldContinue) {
+
             try {
                 checkForNewMessages();
-                Thread.sleep(2000);
+                Thread.sleep(4000); // Intentionally using polling every 4s; VK UI has no event system
             } catch (InterruptedException e) {
                 System.out.println("Bot interrupted");
                 break;
@@ -48,9 +53,11 @@ public class BrowserListener {
                 break;
             }
         }
+
     }
 
     private boolean waitForUserLogin() {
+
         try {
             wait.until(ExpectedConditions.presenceOfElementLocated(By.id("spa_root")));
             System.out.println("User successfully logged in");
@@ -59,36 +66,54 @@ public class BrowserListener {
             System.out.println("[TIMEOUT] Login timeout after 30 seconds");
             return false;
         }
+
     }
 
     private void checkForNewMessages() {
+
         try {
             wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("span.MessageText")));
             List<WebElement> messages = driver.findElements(By.cssSelector("span.MessageText"));
 
-            if (!messages.isEmpty()) {
-                WebElement lastMessage = messages.get(messages.size() - 1);
-                String text = lastMessage.getText();
+            cleanupOldMessages();
 
-                if (!text.isEmpty() && !seenMessages.contains(text)) {
-                    seenMessages.add(text);
+            if (!messages.isEmpty()) {
+
+                String text = messages.get(messages.size() - 1).getText();
+
+                if (!text.isEmpty() && !seenMessages.containsKey(text)) {
+                    seenMessages.put(text, System.currentTimeMillis());
                     System.out.println("New message: " + text);
                 }
             }
         } catch (NoSuchElementException e) {
             System.out.println("[WARNING] No messages found");
         }
+
+    }
+
+    private void cleanupOldMessages() {
+
+        long now = System.currentTimeMillis();
+        seenMessages.entrySet().removeIf(entry -> now - entry.getValue() > TTL_MILLIS);
+
     }
 
     public void stop() {
+
         System.out.println("Stopping browser...");
         shouldContinue = false;
 
         if (driver != null) {
-            new Thread(() -> {
+            try {
                 driver.quit();
+            } catch (Exception e) {
+                System.out.println("[ERROR] Failed to quit browser: " + e.getMessage());
+            } finally {
                 driver = null;
-            }).start();
+            }
         }
+
     }
+
 }
