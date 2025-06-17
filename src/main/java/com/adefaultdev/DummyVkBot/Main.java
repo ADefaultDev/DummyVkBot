@@ -6,8 +6,7 @@ import com.adefaultdev.DummyVkBot.dsConnection.DeepSeekClient;
 public class Main {
     public static void main(String[] args) {
 
-        System.out.println("Running");
-        BrowserLauncher.browserSetup();
+        BrowserLauncher.launchBrowser();
         DeepSeekClient.dsClientSetup();
 
         //add logic to create path to get ready messages(text and pictures)
