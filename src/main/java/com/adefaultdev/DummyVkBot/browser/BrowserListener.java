@@ -29,9 +29,9 @@ public class BrowserListener {
         WebDriverManager.chromedriver().setup();
         driver = new ChromeDriver();
         wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+        MessageSender messageSender = new MessageSender(driver);
 
         driver.get(messengerUrl);
-        System.out.println("Opened URL: " + messengerUrl);
 
         if (!waitForUserLogin()) {
             System.out.println("Login timeout reached. Stopping...");
@@ -42,7 +42,11 @@ public class BrowserListener {
         while (shouldContinue) {
 
             try {
-                checkForNewMessages();
+                String newMessage = checkForNewMessages();
+                if (newMessage != null) {
+                    messageSender.sendMessage(newMessage); // For now, sending copy of the last message
+                                                            //Should double check for avoiding excessive copies
+                }
                 Thread.sleep(4000); // Intentionally using polling every 4s; VK UI has no event system
             } catch (InterruptedException e) {
                 System.out.println("Bot interrupted");
@@ -69,7 +73,7 @@ public class BrowserListener {
 
     }
 
-    private void checkForNewMessages() {
+    private String checkForNewMessages() {
 
         try {
             wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("span.MessageText")));
@@ -78,17 +82,18 @@ public class BrowserListener {
             cleanupOldMessages();
 
             if (!messages.isEmpty()) {
-
                 String text = messages.get(messages.size() - 1).getText();
 
                 if (!text.isEmpty() && !seenMessages.containsKey(text)) {
                     seenMessages.put(text, System.currentTimeMillis());
                     System.out.println("New message: " + text);
+                    return text;
                 }
             }
         } catch (NoSuchElementException e) {
             System.out.println("[WARNING] No messages found");
         }
+        return null;
 
     }
 
