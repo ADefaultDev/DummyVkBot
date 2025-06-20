@@ -15,6 +15,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * BrowserListener — listening new messages from VK with Selenium.
+ * - Getting information about current user
+ * - Checking out for new messages
+ * - Able to ignore user's own messages
+ * - Sends back a copy of last incoming message
+ * - Used in DummyVkBot.
+ */
+
 @SuppressWarnings("BusyWait")
 public class BrowserListener {
 
@@ -25,6 +34,12 @@ public class BrowserListener {
     private static final long TTL_MILLIS = 10 * 60 * 1000;
     private String myHref = null;
 
+    /**
+     * Setups the listener in VK.
+     * Requires user to log in manually.
+     *
+     * @param messengerUrl URL for VK site
+     */
     public void start(String messengerUrl) {
 
         WebDriverManager.chromedriver().setup();
@@ -69,6 +84,10 @@ public class BrowserListener {
 
     }
 
+    /**
+     * Getting a reference for current user (href) to manage outgoing messages
+     * @return href of the current user or null if href is not detected
+     */
     private String determineCurrentUserHref() {
         try {
             WebElement profileLink = wait.until(
@@ -83,6 +102,10 @@ public class BrowserListener {
         }
     }
 
+
+    /**
+     * Checking if the user logged in on VK site
+     */
     private boolean waitForUserLogin() {
 
         try {
@@ -96,6 +119,12 @@ public class BrowserListener {
 
     }
 
+    /**
+     * -After entering any dialogue, checking if new messages are incoming
+     * -Able to distinguish user's messages from other's, preventing duplicating
+     * -New messages are stored in seenMessages, preventing from answering same messages few times
+     * -The store for messages getting cleaned up every 10 minutes to avoid excessive memory usage
+     */
     private String checkForNewMessages() {
         try {
             wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("div.ConvoMessage")));
