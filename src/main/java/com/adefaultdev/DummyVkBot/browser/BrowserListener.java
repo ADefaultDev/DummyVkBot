@@ -23,6 +23,7 @@ public class BrowserListener {
     private final Map<String, Long> seenMessages = new ConcurrentHashMap<>();
     private volatile boolean shouldContinue = true;
     private static final long TTL_MILLIS = 10 * 60 * 1000;
+    private String myHref = null;
 
     public void start(String messengerUrl) {
 
@@ -32,6 +33,14 @@ public class BrowserListener {
         MessageSender messageSender = new MessageSender(driver);
 
         driver.get(messengerUrl);
+
+        myHref = determineCurrentUserHref();
+        if (myHref == null) {
+            System.out.println("Failed to detect current user. Stopping.");
+            stop();
+            return;
+        }
+
 
         if (!waitForUserLogin()) {
             System.out.println("Login timeout reached. Stopping...");
@@ -60,6 +69,20 @@ public class BrowserListener {
 
     }
 
+    private String determineCurrentUserHref() {
+        try {
+            WebElement profileLink = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(By.cssSelector("a#top_profile_link"))
+            );
+            String href = profileLink.getAttribute("href");
+            System.out.println("Detected myHref from header: " + href);
+            return href;
+        } catch (Exception e) {
+            System.out.println("[ERROR] Cannot detect current user href: " + e.getMessage());
+            return null;
+        }
+    }
+
     private boolean waitForUserLogin() {
 
         try {
@@ -74,27 +97,47 @@ public class BrowserListener {
     }
 
     private String checkForNewMessages() {
-
         try {
-            wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("span.MessageText")));
-            List<WebElement> messages = driver.findElements(By.cssSelector("span.MessageText"));
+            wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("div.ConvoMessage")));
 
+            List<WebElement> messageBlocks = driver.findElements(By.cssSelector("div.ConvoMessage"));
             cleanupOldMessages();
 
-            if (!messages.isEmpty()) {
-                String text = messages.get(messages.size() - 1).getText();
+            if (!messageBlocks.isEmpty()) {
+                WebElement lastMessageBlock = messageBlocks.get(messageBlocks.size() - 1);
 
-                if (!text.isEmpty() && !seenMessages.containsKey(text)) {
-                    seenMessages.put(text, System.currentTimeMillis());
-                    System.out.println("New message: " + text);
-                    return text;
+                String authorHref = "";
+                try {
+                    WebElement authorLink = lastMessageBlock.findElement(By.cssSelector("a.ConvoMessageHeader__authorLink"));
+                    authorHref = authorLink.getAttribute("href");
+                } catch (NoSuchElementException ignored) {}
+
+                if (authorHref.equalsIgnoreCase(myHref)) {
+                    return null;
+                }
+
+                List<WebElement> spans = lastMessageBlock.findElements(By.cssSelector("span.MessageText"));
+                StringBuilder fullMessageBuilder = new StringBuilder();
+                for (WebElement span : spans) {
+                    fullMessageBuilder.append(span.getText()).append("\n");
+                }
+
+                String fullMessage = fullMessageBuilder.toString().trim().replaceAll("\\s+", " ");
+
+                if (!fullMessage.isEmpty() && !seenMessages.containsKey(fullMessage)) {
+                    seenMessages.put(fullMessage, System.currentTimeMillis());
+                    System.out.println("New full message: " + fullMessage);
+                    return fullMessage;
                 }
             }
+
         } catch (NoSuchElementException e) {
             System.out.println("[WARNING] No messages found");
+        } catch (Exception e) {
+            System.out.println("[ERROR] " + e.getMessage());
         }
-        return null;
 
+        return null;
     }
 
     private void cleanupOldMessages() {
