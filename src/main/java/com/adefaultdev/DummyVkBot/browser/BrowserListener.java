@@ -1,5 +1,6 @@
 package com.adefaultdev.DummyVkBot.browser;
 
+import com.adefaultdev.DummyVkBot.dsConnection.DeepSeekClient;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.TimeoutException;
@@ -33,6 +34,7 @@ public class BrowserListener {
     private volatile boolean shouldContinue = true;
     private static final long TTL_MILLIS = 10 * 60 * 1000;
     private String myHref = null;
+    private DeepSeekClient deepSeekClient;
 
     /**
      * Setups the listener in VK.
@@ -40,12 +42,10 @@ public class BrowserListener {
      *
      * @param messengerUrl URL for VK site
      */
-    public void start(String messengerUrl) {
-
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
-        wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-        MessageSender messageSender = new MessageSender(driver);
+    public void start(String messengerUrl, WebDriver driver, DeepSeekClient deepSeekClient) {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+        this.deepSeekClient = deepSeekClient;
 
         driver.get(messengerUrl);
 
@@ -56,32 +56,13 @@ public class BrowserListener {
             return;
         }
 
-
         if (!waitForUserLogin()) {
             System.out.println("Login timeout reached. Stopping...");
             stop();
             return;
         }
 
-        while (shouldContinue) {
-
-            try {
-                String newMessage = checkForNewMessages();
-                if (newMessage != null) {
-                    messageSender.sendMessage(newMessage); // For now, sending copy of the last message
-                                                            //Should double check for avoiding excessive copies
-                }
-                Thread.sleep(4000); // Intentionally using polling every 4s; VK UI has no event system
-            } catch (InterruptedException e) {
-                System.out.println("Bot interrupted");
-                break;
-            } catch (Exception e) {
-                System.out.println("[ERROR] " + e.getMessage());
-                stop();
-                break;
-            }
-        }
-
+        startMessageProcessing();
     }
 
     /**
@@ -115,6 +96,43 @@ public class BrowserListener {
         } catch (TimeoutException e) {
             System.out.println("[TIMEOUT] Login timeout after 30 seconds");
             return false;
+        }
+
+    }
+
+    private void startMessageProcessing() {
+        MessageSender vkMessageSender = new MessageSender(driver);
+
+        while (shouldContinue) {
+            try {
+                String newMessage = checkForNewMessages();
+                if (newMessage != null) {
+                    processAndRespondToMessage(newMessage, vkMessageSender);
+                }
+                Thread.sleep(4000);
+            } catch (InterruptedException e) {
+                System.out.println("Bot interrupted");
+                break;
+            } catch (Exception e) {
+                System.out.println("[ERROR] " + e.getMessage());
+                stop();
+                break;
+            }
+        }
+    }
+
+    private void processAndRespondToMessage(String incomingMessage, MessageSender vkMessageSender) {
+
+        try {
+            deepSeekClient.sendMessage(incomingMessage);
+
+            String generatedResponse = deepSeekClient.getLastResponse();
+
+            if (generatedResponse != null && !generatedResponse.isEmpty()) {
+                vkMessageSender.sendMessage(generatedResponse);
+            }
+        } catch (Exception e) {
+            System.out.println("[ERROR] Failed to process message: " + e.getMessage());
         }
 
     }
