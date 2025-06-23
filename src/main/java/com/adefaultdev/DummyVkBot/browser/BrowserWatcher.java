@@ -1,0 +1,28 @@
+package com.adefaultdev.DummyVkBot.browser;
+
+import org.openqa.selenium.WebDriver;
+
+@SuppressWarnings("BusyWait")
+public class BrowserWatcher implements Runnable {
+    private final WebDriver driver;
+
+    public BrowserWatcher(WebDriver driver) {
+        this.driver = driver;
+    }
+
+    @Override
+    public void run() {
+        try {
+            while (true) {
+
+                if (driver.getWindowHandles().isEmpty()) {
+                    System.out.println("Browser quit...");
+                    System.exit(0);
+                }
+                Thread.sleep(1000); // Had to check in thread due to lack of API
+            }
+        } catch (Exception e) {
+            System.exit(1);
+        }
+    }
+}
