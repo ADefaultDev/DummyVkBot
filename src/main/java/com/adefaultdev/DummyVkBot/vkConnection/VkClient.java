@@ -1,15 +1,14 @@
-package com.adefaultdev.DummyVkBot.browser;
+package com.adefaultdev.DummyVkBot.vkConnection;
 
+import com.adefaultdev.DummyVkBot.browser.MessageSender;
 import com.adefaultdev.DummyVkBot.dsConnection.DeepSeekClient;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import io.github.bonigarcia.wdm.WebDriverManager;
 
 import java.time.Duration;
 import java.util.List;
@@ -26,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 
 @SuppressWarnings("BusyWait")
-public class BrowserListener {
+public class VkClient {
 
     private WebDriver driver;
     private WebDriverWait wait;
@@ -128,7 +127,6 @@ public class BrowserListener {
     private void processAndRespondToMessage(String incomingMessage, MessageSender vkMessageSender) {
 
         try {
-
             String preMessage = "Составь небольшой ответ на данное сообщение и не используй эмодзи. Только текст: ";
             String generatedResponse = deepSeekClient.sendMessageAndGetResponse(preMessage + incomingMessage);
 
@@ -148,6 +146,7 @@ public class BrowserListener {
      * -The store for messages getting cleaned up every 10 minutes to avoid excessive memory usage
      */
     private String checkForNewMessages() {
+
         try {
             wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(By.cssSelector("div.ConvoMessage")));
 
