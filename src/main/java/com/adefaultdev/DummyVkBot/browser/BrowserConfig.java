@@ -7,6 +7,7 @@ import java.util.Properties;
  * Using config.properties file to provide necessary settings for other classes
  */
 public class BrowserConfig {
+
     private static final String PROPERTIES_FILE = "config.properties";
 
     private static final String browserPath;

@@ -1,8 +1,9 @@
 package com.adefaultdev.DummyVkBot;
 
 import com.adefaultdev.DummyVkBot.browser.BrowserLauncher;
-import com.adefaultdev.DummyVkBot.browser.BrowserListener;
+import com.adefaultdev.DummyVkBot.browser.BrowserWatcher;
 import com.adefaultdev.DummyVkBot.dsConnection.DeepSeekClient;
+import com.adefaultdev.DummyVkBot.vkConnection.VkClient;
 import org.openqa.selenium.WebDriver;
 
 public class Main {
@@ -11,11 +12,15 @@ public class Main {
 
         WebDriver driver = BrowserLauncher.launchBrowser();
 
+        Thread watcherThread = new Thread(new BrowserWatcher(driver));
+        watcherThread.setDaemon(true);
+        watcherThread.start();
+
         DeepSeekClient dsClient = new DeepSeekClient(driver);
         dsClient.setup("https://www.deepseek.com/en");
 
-        BrowserListener listener = new BrowserListener();
-        listener.start("https://vk.com/", driver, dsClient);
+        VkClient vkClient = new VkClient();
+        vkClient.start("https://vk.com/", driver, dsClient);
 
         //add logic to create path to get ready messages(text and pictures)
 
