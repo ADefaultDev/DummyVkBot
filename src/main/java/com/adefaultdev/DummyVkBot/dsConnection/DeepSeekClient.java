@@ -3,6 +3,7 @@ package com.adefaultdev.DummyVkBot.dsConnection;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.*;
 import java.time.Duration;
+import java.util.List;
 
 /**
  * Getting message from VK
@@ -12,8 +13,6 @@ public class DeepSeekClient {
 
     private final WebDriver driver;
     private final WebDriverWait wait;
-    private String deepSeekUrl;
-    private String lastResponse;
 
     public DeepSeekClient(WebDriver driver) {
         this.driver = driver;
@@ -25,96 +24,87 @@ public class DeepSeekClient {
      * @param url - URL of DeepSeek site
      */
     public void setup(String url) {
-        this.deepSeekUrl = url;
+
         System.out.println("DeepSeek client is up. URL: " + url);
 
         try {
+
+            JavascriptExecutor js = (JavascriptExecutor) driver; // This block used to bypass cloudflare
+            js.executeScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});");
+            js.executeScript("window.navigator.chrome = {runtime: {}, etc: {}};");
+
             driver.get(url);
-            wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("div.chat-container, div.conversation-wrapper")
-            ));
-            System.out.println("DeepSeek site loaded");
-        } catch (Exception e) {
-            System.out.println("[Error] During Deep Seek client setup " + e.getMessage());
-        }
-    }
 
-    /**
-     * Sends message to DeepSeek
-     * @param message - text of the message to send
-     */
-    public void sendMessage(String message) {
-        if (deepSeekUrl == null || deepSeekUrl.isEmpty()) {
-            System.out.println("[ОШИБКА] URL DeepSeek is not available. Call setup()");
-            return;
-        }
+            Thread.sleep(5000);
 
-        try {
+            wait.until(ExpectedConditions.numberOfWindowsToBe(2));
 
-            String originalHandle = driver.getWindowHandle();
-            if (driver.getWindowHandles().size() == 1) {
-                ((JavascriptExecutor)driver).executeScript("window.open('" + deepSeekUrl + "', '_blank');");
-                wait.until(ExpectedConditions.numberOfWindowsToBe(2));
-            }
-
-            for (String handle : driver.getWindowHandles()) {
-                if (!handle.equals(originalHandle)) {
-                    driver.switchTo().window(handle);
+            String originalWindow = driver.getWindowHandle();
+            for (String windowHandle : driver.getWindowHandles()) {
+                if (!windowHandle.equals(originalWindow)) {
+                    driver.switchTo().window(windowHandle);
                     break;
                 }
             }
 
-            waitForChatReady();
+            try {
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector("textarea[placeholder='Message DeepSeek']")
+                ));
+                System.out.println("[DeepSeek] Chat is loaded successfully.");
+            } catch (TimeoutException e) {
+                System.out.println("[DeepSeek ERROR] Unable to log in or accessing the chat");
+                throw e;
+            }
 
-            WebElement chatInput = wait.until(
-                    ExpectedConditions.presenceOfElementLocated(
-                            By.cssSelector("textarea.chat-input, textarea.message-input")
-                    )
-            );
+            driver.switchTo().window(originalWindow);
 
-            chatInput.click();
-            chatInput.clear();
-            chatInput.sendKeys(message);
-
-            wait.until(d -> !chatInput.getAttribute("value").isEmpty());
-
-            WebElement sendButton = wait.until(
-                    ExpectedConditions.elementToBeClickable(
-                            By.cssSelector("button.send-button, button[aria-label='Send']")
-                    )
-            );
-            sendButton.click();
-
-            Thread.sleep(1000);
-
-            driver.close();
-            driver.switchTo().window(originalHandle);
-
-            waitForResponse();
         } catch (Exception e) {
-            System.out.println("[Error] DeepSeek: " + e.getMessage());
+            System.out.println("[DeepSeek ERROR] " + e.getMessage());
             cleanupTabs();
         }
     }
 
-    private void waitForChatReady() {
-
+    /**
+     * Sends message to DeepSeek and getting a response
+     * @param message - message from VK
+     * @return - response from DeepSeek(null if error occur)
+     */
+    public String sendMessageAndGetResponse(String message) {
         try {
-            wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("div.chat-container, div.conversation-wrapper")
-            ));
 
-            try {
-                WebElement closeBtn = wait.until(ExpectedConditions.elementToBeClickable(
-                        By.cssSelector("button.modal-close, button[aria-label='Close']")
-                ));
-                closeBtn.click();
-            } catch (Exception ignored) {}
+            String vkTab = driver.getWindowHandle();
+            String deepSeekTab = driver.getWindowHandles()
+                    .stream()
+                    .filter(tab -> !tab.equals(vkTab))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("No DeepSeek window found!"));
 
-        } catch (TimeoutException e) {
-            throw new RuntimeException("Time limit exceeded for DeepSeek");
+            driver.switchTo().window(deepSeekTab);
+
+            WebElement chatInput = wait.until(
+                    ExpectedConditions.elementToBeClickable(
+                            By.cssSelector("textarea[placeholder='Message DeepSeek']")
+                    )
+            );
+            chatInput.sendKeys(message);
+
+            WebElement sendButton = wait.until(
+                    ExpectedConditions.elementToBeClickable(
+                            By.cssSelector("div[role='button'][aria-disabled='false']")
+                    )
+            );
+            sendButton.click();
+
+            String response = waitForResponse();
+
+            driver.switchTo().window(vkTab);
+            return response;
+
+        } catch (Exception e) {
+            System.out.println("[DeepSeek ERROR] " + e.getMessage());
+            return null;
         }
-
     }
 
     private void cleanupTabs() {
@@ -127,24 +117,57 @@ public class DeepSeekClient {
             }
             driver.switchTo().window(mainWindow);
         } catch (Exception e) {
-            System.out.println("[Error] tabs cleanup  " + e.getMessage());
+            System.out.println("[DeepSeek ERROR] tabs cleanup  " + e.getMessage());
         }
     }
 
-    private void waitForResponse() {
+
+    /**
+     * Awaiting answer from DeepSeek
+     * @return - message generated by DeepSeek
+     */
+    private String waitForResponse() {
         try {
-            WebElement response = wait.until(
-                    ExpectedConditions.presenceOfElementLocated(
-                            By.cssSelector("div.response-content, div.assistant-message")
+
+            wait.until(d ->
+                    driver.findElements(
+                            By.xpath("//div[@class='_7436101']//div[@class='_480132b']")
+                    ).isEmpty()
+            );
+
+
+            List<WebElement> allResponseBlocks = wait.until(
+                    ExpectedConditions.presenceOfAllElementsLocatedBy(
+                            By.cssSelector("div.ds-markdown--block")
                     )
             );
-            this.lastResponse = response.getText();
+
+            if (allResponseBlocks.isEmpty()) {
+                System.out.println("[WARN] No answer found");
+                return null;
+            }
+
+            WebElement lastResponseBlock = allResponseBlocks.get(allResponseBlocks.size() - 1);
+
+            String response = (String) ((JavascriptExecutor)driver).executeScript(
+                    "return arguments[0].innerText",
+                    lastResponseBlock
+            );
+
+            response = response.replaceAll("[\\p{So}\\p{Cn}]", "")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+
+            System.out.println("[DeepSeek] The last generated answer: " + response);
+            return response;
+
         } catch (TimeoutException e) {
-            System.out.println("[TIMEOUT] Response not received");
+            System.out.println("[TIMEOUT] No answer received");
+            return null;
+        } catch (Exception e) {
+            System.out.println("[DeepSeek ERROR] Error during receiving an answer: " + e.getMessage());
+            return null;
         }
     }
 
-    public String getLastResponse() {
-        return this.lastResponse;
-    }
 }
