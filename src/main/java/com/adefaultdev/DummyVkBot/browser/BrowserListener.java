@@ -121,12 +121,16 @@ public class BrowserListener {
         }
     }
 
+    /**
+     * Using DeepSeek client, creating a response for a new message
+     * If the answer is not empty, sending generated response in VK
+     */
     private void processAndRespondToMessage(String incomingMessage, MessageSender vkMessageSender) {
 
         try {
-            deepSeekClient.sendMessage(incomingMessage);
 
-            String generatedResponse = deepSeekClient.getLastResponse();
+            String preMessage = "Составь небольшой ответ на данное сообщение и не используй эмодзи. Только текст: ";
+            String generatedResponse = deepSeekClient.sendMessageAndGetResponse(preMessage + incomingMessage);
 
             if (generatedResponse != null && !generatedResponse.isEmpty()) {
                 vkMessageSender.sendMessage(generatedResponse);
