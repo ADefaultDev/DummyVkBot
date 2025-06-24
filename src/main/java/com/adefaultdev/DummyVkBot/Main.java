@@ -12,12 +12,12 @@ public class Main {
 
         WebDriver driver = BrowserLauncher.launchBrowser();
 
-        /*Thread watcherThread = new Thread(new BrowserWatcher(driver));
-        watcherThread.setDaemon(true);
-        watcherThread.start();*/
-
         DeepSeekClient dsClient = new DeepSeekClient(driver);
         dsClient.setup("https://www.deepseek.com/en");
+
+        Thread watcherThread = new Thread(new BrowserWatcher(driver));
+        watcherThread.setDaemon(true);
+        watcherThread.start();
 
         VkClient vkClient = new VkClient();
         vkClient.start("https://vk.com/", driver, dsClient);
