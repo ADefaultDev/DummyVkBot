@@ -1,5 +1,6 @@
 package com.adefaultdev.DummyVkBot.vkConnection;
 
+import com.adefaultdev.DummyVkBot.browser.BrowserConfig;
 import com.adefaultdev.DummyVkBot.browser.MessageSender;
 import com.adefaultdev.DummyVkBot.dsConnection.DeepSeekClient;
 import org.openqa.selenium.By;
@@ -42,6 +43,7 @@ public class VkClient {
      * @param messengerUrl URL for VK site
      */
     public void start(String messengerUrl, WebDriver driver, DeepSeekClient deepSeekClient) {
+
         this.driver = driver;
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(30));
         this.deepSeekClient = deepSeekClient;
@@ -69,6 +71,7 @@ public class VkClient {
      * @return href of the current user or null if href is not detected
      */
     private String determineCurrentUserHref() {
+
         try {
             WebElement profileLink = wait.until(
                     ExpectedConditions.presenceOfElementLocated(By.cssSelector("a#top_profile_link"))
@@ -80,6 +83,7 @@ public class VkClient {
             System.out.println("[ERROR] Cannot detect current user href: " + e.getMessage());
             return null;
         }
+
     }
 
 
@@ -100,6 +104,7 @@ public class VkClient {
     }
 
     private void startMessageProcessing() {
+
         MessageSender vkMessageSender = new MessageSender(driver);
 
         while (shouldContinue) {
@@ -127,8 +132,8 @@ public class VkClient {
     private void processAndRespondToMessage(String incomingMessage, MessageSender vkMessageSender) {
 
         try {
-            String preMessage = "Составь небольшой ответ на данное сообщение и не используй эмодзи. Только текст: ";
-            String generatedResponse = deepSeekClient.sendMessageAndGetResponse(preMessage + incomingMessage);
+            String prompt = BrowserConfig.getDeepSeekPrompt();
+            String generatedResponse = deepSeekClient.sendMessageAndGetResponse(prompt + incomingMessage);
 
             if (generatedResponse != null && !generatedResponse.isEmpty()) {
                 vkMessageSender.sendMessage(generatedResponse);
