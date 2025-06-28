@@ -19,8 +19,7 @@ Java application that helps user be constantly online in social network "Vk"
 
 ⚙️ Technologies  
 Java 17+ (programming language)  
-Selenium (browser parser)  
-OkHttp (HTTP-requests to DeepSeek)  
+Selenium (browser parser)   
 Gradle (build system)  
 
 🚀 Setup  
@@ -41,9 +40,10 @@ mvn clean install
 mvn exec:java -Dexec.mainClass="com.yourpackage.Main"    
  
 📅 Ideas  
-Integration with different social networks  
+Integration with different social networks.  
 Extension for Chrome/Firefox.  
-GUI  
+GUI.
+Using premade photos and messages to answer.  
 
 📜 License  
 This project is using MIT license.  
