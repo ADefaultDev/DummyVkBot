@@ -2,6 +2,7 @@ package com.adefaultdev.DummyVkBot;
 
 import com.adefaultdev.DummyVkBot.browser.BrowserLauncher;
 import com.adefaultdev.DummyVkBot.browser.BrowserWatcher;
+import com.adefaultdev.DummyVkBot.browser.wrapper.WebDriverManagerWrapper;
 import com.adefaultdev.DummyVkBot.dsConnection.DeepSeekClient;
 import com.adefaultdev.DummyVkBot.vkConnection.VkClient;
 import org.openqa.selenium.WebDriver;
@@ -10,7 +11,8 @@ public class Main {
 
     public static void main(String[] args) {
 
-        WebDriver driver = BrowserLauncher.launchBrowser();
+        BrowserLauncher browserLauncher = new BrowserLauncher(new WebDriverManagerWrapper());
+        WebDriver driver = browserLauncher.launchBrowser();
 
         DeepSeekClient dsClient = new DeepSeekClient(driver);
         dsClient.setup("https://www.deepseek.com/en");

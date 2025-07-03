@@ -1,6 +1,6 @@
 package com.adefaultdev.DummyVkBot.browser;
 
-import io.github.bonigarcia.wdm.WebDriverManager;
+import com.adefaultdev.DummyVkBot.browser.wrapper.WebDriverManagerWrapper;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -11,8 +11,14 @@ import org.openqa.selenium.chrome.ChromeOptions;
  */
 public class BrowserLauncher {
 
-    public static WebDriver launchBrowser() {
 
+    private final WebDriverManagerWrapper driverManagerWrapper;
+
+    public BrowserLauncher(WebDriverManagerWrapper driverManagerWrapper) {
+        this.driverManagerWrapper = driverManagerWrapper;
+    }
+
+    public WebDriver launchBrowser() {
         ChromeOptions options = new ChromeOptions();
 
         options.setBinary(BrowserConfig.getBrowserPath());
@@ -24,9 +30,7 @@ public class BrowserLauncher {
                 "--disable-dev-shm-usage"
         );
 
-        WebDriverManager.chromedriver()
-                .driverVersion(BrowserConfig.getDriverVersion())
-                .setup();
+        driverManagerWrapper.setup(BrowserConfig.getDriverVersion());
 
         return new ChromeDriver(options);
     }
