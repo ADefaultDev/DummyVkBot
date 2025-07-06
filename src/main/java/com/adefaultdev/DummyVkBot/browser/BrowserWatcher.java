@@ -7,11 +7,19 @@ import org.openqa.selenium.WebDriver;
  */
 @SuppressWarnings("BusyWait")
 public class BrowserWatcher implements Runnable {
+
     private final WebDriver driver;
+    private final ExitHandler exitHandler;
+    private volatile boolean isRunning = true;
 
     public BrowserWatcher(WebDriver driver) {
+        this(driver, System::exit);
+    }
+
+    public BrowserWatcher(WebDriver driver, ExitHandler exitHandler) {
 
         this.driver = driver;
+        this.exitHandler = exitHandler;
 
     }
 
@@ -19,15 +27,25 @@ public class BrowserWatcher implements Runnable {
     public void run() {
 
         try {
-            while (true) {
+            while (isRunning) {
                 if (driver.getWindowHandles().isEmpty()) {
-                    System.exit(0);
+                    exitHandler.exit(0);
+                    break;
                 }
-                Thread.sleep(1000); // Had to check in thread due to lack of API
+                Thread.sleep(1000);
             }
         } catch (Exception e) {
-            System.exit(1);
+            exitHandler.exit(1);
         }
+
     }
 
+    @FunctionalInterface
+    public interface ExitHandler {
+        void exit(int status);
+    }
+
+    public void stop(){
+        isRunning = false;
+    }
 }
